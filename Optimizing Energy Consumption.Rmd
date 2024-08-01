@@ -1,0 +1,165 @@
+---
+title: "Optimizing Energy Consumption"
+author: "Uzair Shafique"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, message = FALSE}
+library(tidyverse)
+library(imputeTS)
+library(plotly)
+library(car)
+library(broom)
+```
+
+
+
+```{r}
+# Read the CSV file
+Energy_data <- read.csv('energy-consumption.csv')
+```
+
+
+```{r} 
+# Exploratory Data Analysis
+# Check the structure of the data
+print(str(Energy_data))
+
+```
+
+```{r}
+# View the first few rows of the data
+print(head(Energy_data))
+
+```
+
+```{r}
+# Check for missing values
+print(colSums(is.na(Energy_data)))
+
+```
+
+
+```{r} 
+#2 Data Cleaning 
+# Impute missing values for numerical columns using mean
+Energy_data <- na_mean(Energy_data)
+```
+
+```{r}
+# Confirm no missing values 
+print(colSums(is.na(Energy_data)))
+```
+
+```{r}
+# 3- Data Visualization
+# Create bar plot for Electricity Usage Across Departments and Years
+fig <- plot_ly(data = Energy_data, x = ~Department, y = ~`Electricity.Usage`, color = ~Year, type = 'bar') %>%
+  layout(title = 'Electricity Usage Across Departments and Years',
+         xaxis = list(title = 'Department', tickangle = 45),
+         yaxis = list(title = 'Electricity Usage'),
+         legend = list(title = 'Year'))
+
+fig
+
+```
+
+```{r}
+# Create scatter plot for Electricity Usage vs Building Area
+fig <- plot_ly(data = Energy_data, x = ~`Building.Area`, y = ~`Electricity.Usage`, mode = 'markers') %>%
+  add_trace(type = 'scatter', mode = 'markers', name = 'Data') %>%
+  add_trace(type = 'scatter', x = ~`Building.Area`, y = ~fitted(lm(`Electricity.Usage` ~ `Building.Area`, data = Energy_data)), 
+            mode = 'lines', name = 'Trendline', line = list(color = 'red', width = 2)) %>%
+  layout(title = 'Electricity Usage vs Building Area',
+         xaxis = list(title = 'Building Area'),
+         yaxis = list(title = 'Electricity Usage'))
+
+fig
+
+
+```
+
+```{r}
+# Group the data by department and calculate the total energy use intensity
+department_energy <- Energy_data %>%
+  group_by(Department) %>%
+  summarise(Total_Energy_Use_Intensity = sum(`Energy.Use.Intensity`))
+
+
+# Select the top 8 departments based on total energy use intensity
+top_departments <- department_energy %>%
+  top_n(8, Total_Energy_Use_Intensity)
+
+# Create a Pie Chart 
+fig <- plot_ly(data = top_departments, labels = ~Department, values = ~Total_Energy_Use_Intensity, type = 'pie',
+               textinfo = 'label+percent',
+               hole = 0.3) %>%
+  layout(title = 'Top 8 Departments by Total Energy Use Intensity')
+
+fig
+```
+
+```{r}
+# Group the data by department and calculate the total electricity usage
+department_energy <- Energy_data %>%
+  group_by(Department) %>%
+  summarise(Total_Electricity_Usage = sum(`Electricity.Usage`))
+
+# Sort the departments by electricity usage in descending order
+department_energy <- department_energy %>%
+  arrange(desc(Total_Electricity_Usage))
+
+# Create a Funnel Chart
+fig <- plot_ly(data = department_energy, x = ~Total_Electricity_Usage, y = ~Department, type = 'funnel') %>%
+  layout(title = 'Energy Consumption Funnel by Department')
+
+fig
+```
+
+```{r}
+# 4 Machine Learning 
+# Fit linear regression model
+lm_model <- lm(`Electricity.Usage` ~ `Building.Area`, data = Energy_data)
+lm_summary <- tidy(lm_model)
+
+# Print regression summary
+print(lm_summary)
+
+```
+
+```{r}
+# Conduct hypothesis test 
+#  compare the mean Electricity Usage between two departments
+
+#  select two departments
+sample_departments <- Energy_data %>%
+  pull(Department) %>%
+  sample(2)
+
+# Subset data for the selected departments
+dept_data <- Energy_data %>%
+  filter(Department %in% sample_departments)
+
+# Perform t-test
+t_test_result <- t.test(`Electricity.Usage` ~ Department, data = dept_data)
+
+# Print t-test result
+print(t_test_result)
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
